@@ -1,0 +1,5 @@
+Jair - PUT and DELETE
+
+Ibrahima - UI controls and search queries
+
+Mark - Map stuff and GET requests for Crime API
