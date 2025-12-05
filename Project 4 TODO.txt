@@ -5,4 +5,4 @@ Ibrahima - UI controls and search queries
 Mark - Map stuff and GET requests for Crime API
     - finished populating the table and putting markers on the map 
     with crime counts
-    - still need to change the table based on the view of the map
+    - finished updating the tables based on map view

@@ -4,9 +4,19 @@ import { reactive, ref, onMounted } from 'vue'
 let crime_url = ref('');
 let dialog_err = ref(false);
 
+let neighborhood_names_map = {};
+
 let incidents = ref([]);
 let neighborhoods = ref([]);
 let crime_counts = reactive({});
+let mapBounds = reactive({
+    minlat: 0,
+    maxlat: 0,
+    minlon: 0,
+    maxlon: 0
+});
+let visible_neighborhoods = ref([]);
+
 let map = reactive(
     {
         leaflet: null,
@@ -21,23 +31,23 @@ let map = reactive(
             se: {lat: 44.883658, lng: -92.993787}
         },
         neighborhood_markers: [
-            {location: [44.942068, -93.020521], marker: null, name: "Conway/Battlecreek/Highwood"},
-            {location: [44.977413, -93.025156], marker: null, name: "Greater East Side"},
-            {location: [44.931244, -93.079578], marker: null, name: "West Side"},
-            {location: [44.956192, -93.060189], marker: null, name: "Dayton's Bluff"},
-            {location: [44.978883, -93.068163], marker: null, name: "Payne/Phalen"},
-            {location: [44.975766, -93.113887], marker: null, name: "North End"},
-            {location: [44.959639, -93.121271], marker: null, name: "Thomas/Dale(Frogtown)"},
-            {location: [44.947700, -93.128505], marker: null, name: "Summit/University"},
-            {location: [44.930276, -93.119911], marker: null, name: "West Seventh"},
-            {location: [44.982752, -93.147910], marker: null, name: "Como"},
-            {location: [44.963631, -93.167548], marker: null, name: "Hamline/Midway"},
-            {location: [44.973971, -93.197965], marker: null, name: "St. Anthony"},
-            {location: [44.949043, -93.178261], marker: null, name: "Union Park"},
-            {location: [44.934848, -93.176736], marker: null, name: "Macalester-Groveland"},
-            {location: [44.913106, -93.170779], marker: null, name: "Highland"},
-            {location: [44.937705, -93.136997], marker: null, name: "Summit Hill"},
-            {location: [44.949203, -93.093739], marker: null, name: "Capitol River"}
+            {location: [44.942068, -93.020521], marker: null, id: 1, name: "Conway/Battlecreek/Highwood"},
+            {location: [44.977413, -93.025156], marker: null, id: 2, name: "Greater East Side"},
+            {location: [44.931244, -93.079578], marker: null, id: 3, name: "West Side"},
+            {location: [44.956192, -93.060189], marker: null, id: 4, name: "Dayton's Bluff"},
+            {location: [44.978883, -93.068163], marker: null, id: 5, name: "Payne/Phalen"},
+            {location: [44.975766, -93.113887], marker: null, id: 6, name: "North End"},
+            {location: [44.959639, -93.121271], marker: null, id: 7, name: "Thomas/Dale(Frogtown)"},
+            {location: [44.947700, -93.128505], marker: null, id: 8, name: "Summit/University"},
+            {location: [44.930276, -93.119911], marker: null, id: 9, name: "West Seventh"},
+            {location: [44.982752, -93.147910], marker: null, id: 10, name: "Como"},
+            {location: [44.963631, -93.167548], marker: null, id: 11, name: "Hamline/Midway"},
+            {location: [44.973971, -93.197965], marker: null, id: 12, name: "St. Anthony"},
+            {location: [44.949043, -93.178261], marker: null, id: 13, name: "Union Park"},
+            {location: [44.934848, -93.176736], marker: null, id: 14, name: "Macalester-Groveland"},
+            {location: [44.913106, -93.170779], marker: null, id: 15, name: "Highland"},
+            {location: [44.937705, -93.136997], marker: null, id: 16, name: "Summit Hill"},
+            {location: [44.949203, -93.093739], marker: null, id: 17, name: "Capitol River"}
         ]
     }
 );
@@ -68,6 +78,28 @@ onMounted(() => {
     .catch((error) => {
         console.log('Error:', error);
     });
+
+    map.leaflet.on('moveend', () => {        
+        let bounds = map.leaflet.getBounds();
+        mapBounds.minlat = bounds._southWest.lat;
+        mapBounds.maxlat = bounds._northEast.lat;
+        mapBounds.minlon = bounds._southWest.lng;
+        mapBounds.maxlon = bounds._northEast.lng;
+        console.log(mapBounds);
+
+        visible_neighborhoods.value = [];
+        incidents.value = [];
+
+        for(let neighborhood of map.neighborhood_markers){
+            let lat = neighborhood.location[0];
+            let lon = neighborhood.location[1];
+            if(lat >= mapBounds.minlat && lat <= mapBounds.maxlat && lon >= mapBounds.minlon && lon <= mapBounds.maxlon){
+                visible_neighborhoods.value.push(neighborhood.id);
+            }
+        }
+        //console.log(visible_neighborhoods);
+        initializeCrimes();
+    });
 });
 
 
@@ -79,24 +111,22 @@ async function initializeCrimes() {
 
     console.log("Crime URL:" + crime_url.value);
 
-    //uses await to asynchronously build 2 different arrays, one for the incidents and the other for the neighborhood names
     try {
-        let incidents_response = await fetch(crime_url.value + '/incidents', { method: 'GET' });
+        let ids = '';
+        for(let id of visible_neighborhoods.value){
+            ids += `${id},`;
+        }
+        if(ids.length != 0){
+            ids = ids.substring(0, ids.length - 1);
+        }
+        console.log(ids);
+        let incidents_response = await fetch(crime_url.value + '/incidents?neighborhood=' + ids, { method: 'GET' });
         let incident_data = await incidents_response.json();
         console.log(incident_data);
         incidents.value = incident_data;
 
-        let neighborhood_names_map = {};
-        let neighborhood_response = await fetch(crime_url.value + '/neighborhoods', { method: 'GET'});
-        let neighborhood_data = await neighborhood_response.json();
-        for(let i = 0; i < neighborhood_data.neighborhoods.length; i++){
-            let id = neighborhood_data.neighborhoods[i].neighborhood_number;
-            let name = neighborhood_data.neighborhoods[i].neighborhood_name;
-            neighborhood_names_map[id] = name;
-        }
-        //console.log(neighborhood_names_map);
-
         if(incidents.value.length > 0){
+            crime_counts = {};
             for(let i = 0; i < incidents.value.length; i++){
                 incidents.value[i].neighborhood = neighborhood_names_map[incidents.value[i].neighborhood_number];
                 if(!(incidents.value[i].neighborhood in crime_counts)){
@@ -107,7 +137,7 @@ async function initializeCrimes() {
                 }
             }
             
-            console.log(crime_counts);
+            //console.log(crime_counts);
             updateMarkerTitles();
         }
 
@@ -119,6 +149,17 @@ async function initializeCrimes() {
     }
 }
 
+//builds map of neighborhoods ids : names
+async function buildNeighborhoodMap(){
+        let neighborhood_response = await fetch(crime_url.value + '/neighborhoods', { method: 'GET'});
+        let neighborhood_data = await neighborhood_response.json();
+        for(let i = 0; i < neighborhood_data.neighborhoods.length; i++){
+            let id = neighborhood_data.neighborhoods[i].neighborhood_number;
+            let name = neighborhood_data.neighborhoods[i].neighborhood_name;
+            neighborhood_names_map[id] = name;
+        }
+        //console.log(neighborhood_names_map);
+}
 // Update marker titles with crime counts after incidents are loaded
 function updateMarkerTitles() {
     for(let i = 0; i < map.neighborhood_markers.length; i++){
@@ -137,6 +178,7 @@ function closeDialog() {
     if (crime_url.value !== '' && url_input.checkValidity()) {
         dialog_err.value = false;
         dialog.close();
+        buildNeighborhoodMap();
         initializeCrimes();
     }
     else {
