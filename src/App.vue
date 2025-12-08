@@ -79,6 +79,7 @@ onMounted(() => {
         console.log('Error:', error);
     });
 
+    //updates table based on neighborhoods in view
     map.leaflet.on('moveend', () => {        
         let bounds = map.leaflet.getBounds();
         mapBounds.minlat = bounds._southWest.lat;
@@ -153,12 +154,12 @@ async function initializeCrimes() {
 async function buildNeighborhoodMap(){
         let neighborhood_response = await fetch(crime_url.value + '/neighborhoods', { method: 'GET'});
         let neighborhood_data = await neighborhood_response.json();
-        for(let i = 0; i < neighborhood_data.neighborhoods.length; i++){
-            let id = neighborhood_data.neighborhoods[i].neighborhood_number;
-            let name = neighborhood_data.neighborhoods[i].neighborhood_name;
+        for(let i = 0; i < neighborhood_data.length; i++){
+            let id = neighborhood_data[i].neighborhood_number;
+            let name = neighborhood_data[i].neighborhood_name;
             neighborhood_names_map[id] = name;
         }
-        //console.log(neighborhood_names_map);
+        console.log(neighborhood_names_map);
 }
 // Update marker titles with crime counts after incidents are loaded
 function updateMarkerTitles() {
@@ -208,6 +209,7 @@ function closeDialog() {
                 <tr>
                     <td>Case Number</td>
                     <td>Date</td>
+                    <td>Time</td>
                     <td>Incident</td>
                     <td>Police Grid #</td>
                     <td>Neighborhood</td>
@@ -217,7 +219,8 @@ function closeDialog() {
             <tbody>
                 <tr v-for="(incident, index) in incidents">
                     <td>{{ incident.case_number }}</td>
-                    <td>{{ incident.date_time }}</td>
+                    <td>{{ incident.date }}</td>
+                    <td>{{ incident.time }}</td>
                     <td>{{ incident.incident }}</td>
                     <td>{{ incident.police_grid }}</td>
                     <td>{{ incident.neighborhood }}</td>
