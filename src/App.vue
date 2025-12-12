@@ -90,7 +90,8 @@ onMounted(() => {
 
         visible_neighborhoods.value = [];
         incidents.value = [];
-
+        
+        //checks to see what neighborhoods are currently visible
         for(let neighborhood of map.neighborhood_markers){
             let lat = neighborhood.location[0];
             let lon = neighborhood.location[1];
@@ -112,7 +113,9 @@ async function initializeCrimes() {
 
     console.log("Crime URL:" + crime_url.value);
 
+    //adds top 1000 incidents to incidents array based on visible neighborhoods
     try {
+        //checks to see what neighborhoods are visible
         let ids = '';
         for(let id of visible_neighborhoods.value){
             ids += `${id},`;
@@ -120,7 +123,9 @@ async function initializeCrimes() {
         if(ids.length != 0){
             ids = ids.substring(0, ids.length - 1);
         }
-        console.log(ids);
+        //console.log(ids);
+
+        //fetches incidents and puts them in incidents array
         let incidents_response = await fetch(crime_url.value + '/incidents?neighborhood=' + ids, { method: 'GET' });
         let incident_data = await incidents_response.json();
         console.log(incident_data);
@@ -130,6 +135,16 @@ async function initializeCrimes() {
             crime_counts = {};
             for(let i = 0; i < incidents.value.length; i++){
                 incidents.value[i].neighborhood = neighborhood_names_map[incidents.value[i].neighborhood_number];
+                if(incidents.value[i].code <= 863 && incidents.value[i].code != 614){
+                    incidents.value[i].color = "red";
+                }
+                else if(incidents.value[i].code > 863 && incidents.value[i].code <= 1463){
+                    incidents.value[i].color = "blue";
+                }
+                else{
+                    incidents.value[i].color = "green";
+                }
+                //counts crimes
                 if(!(incidents.value[i].neighborhood in crime_counts)){
                     crime_counts[incidents.value[i].neighborhood] = 1;
                 }
@@ -207,6 +222,12 @@ function closeDialog() {
         <table>
             <thead>
                 <tr>
+                    <td>Key: </td>
+                    <td style="background-color: red;">Violent Crimes</td>
+                    <td style="background-color: blue;">Property Crimes</td>
+                    <td style="background-color: green;">Other</td>
+                </tr>
+                <tr>
                     <td>Case Number</td>
                     <td>Date</td>
                     <td>Time</td>
@@ -217,7 +238,7 @@ function closeDialog() {
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="(incident, index) in incidents">
+                <tr v-for="(incident, index) in incidents" :style="{ backgroundColor: incident.color}">
                     <td>{{ incident.case_number }}</td>
                     <td>{{ incident.date }}</td>
                     <td>{{ incident.time }}</td>
