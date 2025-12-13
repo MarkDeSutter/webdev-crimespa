@@ -262,6 +262,7 @@ function updateMarkerTitles() {
             map.neighborhood_markers[i].marker.bindPopup(`<b>${name}</b><br>Crimes: ${crime_count}`);
         }
         
+    }
 }
 
 //Creates a marker on the map for an incident

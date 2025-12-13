@@ -18,12 +18,8 @@
         "preview": "vite preview"
     },
     "dependencies": {
-<<<<<<< HEAD
-        "vue": "^3.5.25"
-=======
         "node": "^24.12.0",
         "vue": "^3.5.22"
->>>>>>> 4bc58ca0d9c3690ceec1493c6278d75fe4d797f9
     },
     "devDependencies": {
         "@vitejs/plugin-vue": "^6.0.1",
