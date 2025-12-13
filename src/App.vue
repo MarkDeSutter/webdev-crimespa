@@ -17,6 +17,30 @@ let mapBounds = reactive({
 });
 let visible_neighborhoods = ref([]);
 
+//filters
+const incident_types = {
+    "Homicide": [100, 110, 120, 3100],
+    "Rape": [210, 220],
+    "Robbery": [300, 311, 312, 313, 314, 321, 322, 323, 324, 331, 332, 333, 334, 341, 342, 343, 344, 351, 352, 353, 354, 361, 362, 363, 364, 371, 372, 373, 374],
+    "Aggravated Assault": [400, 410, 411, 412, 420, 421, 422, 430, 431, 432, 440, 441, 442, 450, 451, 452, 453],
+    "Burglary": [500, 510, 511, 513, 515, 516, 520, 521, 523, 525, 526, 530, 531, 533, 535, 536, 540, 541, 543, 545, 546, 550, 551, 553, 555, 556, 560, 561, 563, 565, 566],
+    "Theft": [600, 601, 603, 611, 612, 613, 614, 621, 622, 623, 630, 631, 632, 633, 640, 641, 642, 643, 651, 652, 653, 661, 662, 663, 671, 672, 673, 681, 682, 683, 691, 692, 693],
+    "Motor Vehicle Theft": [700, 710, 711, 712, 720, 721, 722, 730, 731, 732],
+    "Simple Assault / Domestic": [810, 861, 862, 863],
+    "Arson": [900, 901, 903, 905, 911, 913, 915, 921, 922, 923, 925, 931, 933, 941, 942, 951, 961, 971, 972, 975, 981, 982],
+    "Property Damage / Graffiti": [1400, 1401, 1410, 1415, 1416, 1420, 1425, 1426, 1430, 1435, 1436],
+    "Narcotics": [1800, 1810, 1811, 1812, 1813, 1814, 1815, 1820, 1822, 1823, 1824, 1825, 1830, 1835, 1840, 1841, 1842, 1843, 1844, 1845, 1850, 1855, 1860, 1865, 1870, 1880, 1885],
+    "Weapons": [2619],
+    "Police Proactive Visits": [9954, 9959, 9986]
+};
+
+let neighborhood_list = ref([]); // Data for the neighborhood checkboxes
+let selected_neighborhoods = ref([]); // Stores user selections
+let selected_types = ref([]); // Stores user selections
+let start_date = ref('');
+let end_date = ref('');
+let max_incidents = ref(1000);
+
 let map = reactive(
     {
         leaflet: null,
@@ -108,13 +132,40 @@ onMounted(() => {
 // FUNCTIONS
 // Function called once user has entered REST API URL
 async function initializeCrimes() {
-    // TODO: get code and neighborhood data
-    //       get initial 1000 crimes
-
     console.log("Crime URL:" + crime_url.value);
+
+    let neighborhood_ids = [];
+    if (selected_neighborhoods.value.length > 0) {
+        neighborhood_ids = selected_neighborhoods.value;
+    } else {
+        neighborhood_ids = visible_neighborhoods.value;
+    }
+
+    let incident_codes = selected_types.value.map(type => incident_types[type]).flat();
+
+    let params = new URLSearchParams();
+
+    if(neighborhood_ids.length > 0) {
+        params.append('neighborhood', neighborhood_ids.join(','));
+    }
+    if(incident_codes.length > 0) {
+        params.append('code', incident_codes.join(','));
+    }
+    if(start_date.value) {
+        params.append('start_date', start_date.value);
+    }
+    if(end_date.value) {
+        params.append('end_date', end_date.value);
+    }
+
+    params.append('limit', max_incidents.value);
 
     //adds top 1000 incidents to incidents array based on visible neighborhoods
     try {
+
+        let url = `${crime_url.value}/incidents?${params.toString()}`;
+        console.log("fetching " + url);
+
         //checks to see what neighborhoods are visible
         let ids = '';
         for(let id of visible_neighborhoods.value){
@@ -126,13 +177,17 @@ async function initializeCrimes() {
         //console.log(ids);
 
         //fetches incidents and puts them in incidents array
-        let incidents_response = await fetch(crime_url.value + '/incidents?neighborhood=' + ids, { method: 'GET' });
+        let incidents_response = await fetch(url, { method: 'GET' });
         let incident_data = await incidents_response.json();
         console.log(incident_data);
         incidents.value = incident_data;
+        
+        for (const key in crime_counts) {
+            delete crime_counts[key];
+        }
 
         if(incidents.value.length > 0){
-            crime_counts = {};
+            
             for(let i = 0; i < incidents.value.length; i++){
                 incidents.value[i].neighborhood = neighborhood_names_map[incidents.value[i].neighborhood_number];
                 if(incidents.value[i].code <= 863 && incidents.value[i].code != 614){
@@ -169,10 +224,18 @@ async function initializeCrimes() {
 async function buildNeighborhoodMap(){
         let neighborhood_response = await fetch(crime_url.value + '/neighborhoods', { method: 'GET'});
         let neighborhood_data = await neighborhood_response.json();
+
+        neighborhood_list.value = [];
+
         for(let i = 0; i < neighborhood_data.length; i++){
             let id = neighborhood_data[i].neighborhood_number;
             let name = neighborhood_data[i].neighborhood_name;
             neighborhood_names_map[id] = name;
+
+            neighborhood_list.value.push({
+                id: neighborhood_data[i].neighborhood_number,
+                name: neighborhood_data[i].neighborhood_name
+            });
         }
         console.log(neighborhood_names_map);
 }
@@ -180,9 +243,22 @@ async function buildNeighborhoodMap(){
 function updateMarkerTitles() {
     for(let i = 0; i < map.neighborhood_markers.length; i++){
         let name = map.neighborhood_markers[i].name;
-        let crime_count = crime_counts[name];
-        map.neighborhood_markers[i].marker = L.marker(map.neighborhood_markers[i].location, { title: name  + '\nCrimes: ' + crime_count}).addTo(map.leaflet);
-        map.neighborhood_markers[i].marker.bindPopup(name);
+        let crime_count = crime_counts[name] || 0;
+        
+        // Always remove the old marker if it exists
+        if(map.neighborhood_markers[i].marker) {
+            map.leaflet.removeLayer(map.neighborhood_markers[i].marker);
+            map.neighborhood_markers[i].marker = null; // Clear the reference
+        }
+
+        // Only add a marker if we have a location (safety check)
+        if (map.neighborhood_markers[i].location) {
+             map.neighborhood_markers[i].marker = L.marker(map.neighborhood_markers[i].location, { 
+                title: name  + '\nCrimes: ' + crime_count
+            }).addTo(map.leaflet);
+            
+            map.neighborhood_markers[i].marker.bindPopup(`<b>${name}</b><br>Crimes: ${crime_count}`);
+        }
     }
 }
 
@@ -192,6 +268,7 @@ function closeDialog() {
     let dialog = document.getElementById('rest-dialog');
     let url_input = document.getElementById('dialog-url');
     if (crime_url.value !== '' && url_input.checkValidity()) {
+        crime_url.value = crime_url.value.replace(/\/$/, "");
         dialog_err.value = false;
         dialog.close();
         buildNeighborhoodMap();
@@ -212,6 +289,38 @@ function closeDialog() {
         <br/>
         <button class="button" type="button" @click="closeDialog">OK</button>
     </dialog>
+    <div class="filter-panel">
+    <h3>Filters</h3>
+    <div class="filter-row">
+        <div class="filter-col">
+            <strong>Neighborhoods</strong>
+            <div class="scroll-box">
+                <div v-for="n in neighborhood_list" :key="n.id">
+                    <input type="checkbox" :id="'n_'+n.id" :value="n.id" v-model="selected_neighborhoods">
+                    <label :for="'n_'+n.id">{{ n.name }}</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-col">
+            <strong>Incident Types</strong>
+            <div class="scroll-box">
+                <div v-for="(codes, name) in incident_types" :key="name">
+                    <input type="checkbox" :id="'t_'+name" :value="name" v-model="selected_types">
+                    <label :for="'t_'+name">{{ name }}</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-col">
+            <strong>Settings</strong>
+            <label>Start Date: <input type="date" v-model="start_date"></label>
+            <label>End Date: <input type="date" v-model="end_date"></label>
+            <label>Max Incidents: <input type="number" v-model="max_incidents"></label>
+            <button class="update-btn" @click="initializeCrimes">Update Map</button>
+        </div>
+    </div>
+</div>
     <div class="grid-container ">
         <div class="grid-x grid-padding-x">
             <div id="leafletmap" class="cell auto"></div>
@@ -280,5 +389,37 @@ function closeDialog() {
 .dialog-error {
     font-size: 1rem;
     color: #D32323;
+}
+
+.filter-panel {
+    background: #f0f0f0;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    margin-bottom: 1rem;
+}
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.filter-col {
+    flex: 1;
+    min-width: 250px;
+}
+.scroll-box {
+    height: 150px;
+    overflow-y: scroll;
+    border: 1px solid #ddd;
+    background: white;
+    padding: 0.5rem;
+}
+.update-btn {
+    background-color: #007bff;
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    width: 100%;
 }
 </style>
