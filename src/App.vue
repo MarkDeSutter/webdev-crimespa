@@ -131,6 +131,8 @@ async function initializeCrimes() {
         //console.log(incident_data);
         incidents.value = incident_data;
 
+        
+
         if(incidents.value.length > 0){
             crime_counts = {};
             for(let i = 0; i < incidents.value.length; i++){
@@ -249,6 +251,96 @@ function closeDialog() {
         dialog_err.value = true;
     }
 }
+
+// PUT: Add New Incident
+let newIncident = reactive({
+    case_number: '',
+    date: '',
+    time: '',
+    code: '',
+    incident: '',
+    police_grid: '',
+    neighborhood_number: '',
+    block: ''
+});
+
+let addError = ref('');
+let addSuccess = ref('');
+
+async function submitNewIncident() {
+    addError.value = '';
+    addSuccess.value = '';
+
+    // check for missing fields
+    for (let key in newIncident) {
+        if (!newIncident[key]) {
+            addError.value = "All fields are required.";
+            return;
+        }
+    }
+
+    // ensure date and time are clean 
+    let dateOnly = newIncident.date.substring(0, 10); // YYYY-MM-DD
+    let timeOnly = newIncident.time.substring(0, 8);  // HH:MM:SS
+    if (timeOnly.length === 5) timeOnly += ":00"; // add seconds if missing
+
+    try {
+        let response = await fetch(crime_url.value + "/new-incident", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                ...newIncident,
+                date: dateOnly,
+                time: timeOnly
+            })
+        });
+
+        let txt = await response.text();
+
+        if (!response.ok) {
+            addError.value = txt;
+            return;
+        }
+
+        addSuccess.value = "Incident added!";
+        Object.keys(newIncident).forEach(k => newIncident[k] = "");
+
+        initializeCrimes();
+    }
+    catch (err) {
+        addError.value = "Network error";
+    }
+}
+
+
+
+
+// DELETE: Remove Incident
+async function deleteIncident(case_number) {
+    try {
+        let response = await fetch(crime_url.value + "/remove-incident", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ case_number })
+        });
+
+        let txt = await response.text();
+
+        if (!response.ok) {
+            alert(txt);
+            return;
+        }
+
+        alert("Incident deleted");
+
+        // Refresh table
+        initializeCrimes();
+    }
+    catch (err) {
+        alert("Network error");
+    }
+}
+
 </script>
 
 <template>
@@ -264,6 +356,23 @@ function closeDialog() {
         <div class="grid-x grid-padding-x">
             <div id="leafletmap" class="cell auto"></div>
         </div>
+    </div>
+    <h2>Add New Crime Incident</h2>
+
+    <div class="incident-form">
+        <p v-if="addError" style="color:red">{{ addError }}</p>
+        <p v-if="addSuccess" style="color:green">{{ addSuccess }}</p>
+
+        <input v-model="newIncident.case_number" placeholder="Case Number">
+        <input v-model="newIncident.date" type="date">
+        <input v-model="newIncident.time" type="time">
+        <input v-model="newIncident.code" placeholder="Code">
+        <input v-model="newIncident.incident" placeholder="Incident Description">
+        <input v-model="newIncident.police_grid" placeholder="Police Grid #">
+        <input v-model="newIncident.neighborhood_number" placeholder="Neighborhood #">
+        <input v-model="newIncident.block" placeholder="Block Address">
+
+        <button @click="submitNewIncident">Submit</button>
     </div>
 
     <div>
@@ -296,6 +405,7 @@ function closeDialog() {
                     <td>{{ incident.block }}</td>
                     <td><button @click="createIncidentMarker(incident)">Create marker</button></td>
                     <td><button @click="removeIncidentMarker(incident)">Delete Marker</button></td>
+                    <td><button @click="deleteIncident(incident.case_number)">Delete from DB</button></td>
                 </tr>
             </tbody>
         </table>
