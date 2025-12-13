@@ -110,7 +110,7 @@ onMounted(() => {
         mapBounds.maxlat = bounds._northEast.lat;
         mapBounds.minlon = bounds._southWest.lng;
         mapBounds.maxlon = bounds._northEast.lng;
-        console.log(mapBounds);
+        //console.log(mapBounds);
 
         visible_neighborhoods.value = [];
         incidents.value = [];
@@ -179,7 +179,7 @@ async function initializeCrimes() {
         //fetches incidents and puts them in incidents array
         let incidents_response = await fetch(url, { method: 'GET' });
         let incident_data = await incidents_response.json();
-        console.log(incident_data);
+        //console.log(incident_data);
         incidents.value = incident_data;
         
         for (const key in crime_counts) {
@@ -212,7 +212,7 @@ async function initializeCrimes() {
             updateMarkerTitles();
         }
 
-        console.log(incidents);
+        //console.log(incidents);
 
     }
     catch (err) {
@@ -237,7 +237,7 @@ async function buildNeighborhoodMap(){
                 name: neighborhood_data[i].neighborhood_name
             });
         }
-        console.log(neighborhood_names_map);
+        //console.log(neighborhood_names_map);
 }
 // Update marker titles with crime counts after incidents are loaded
 function updateMarkerTitles() {
@@ -245,13 +245,13 @@ function updateMarkerTitles() {
         let name = map.neighborhood_markers[i].name;
         let crime_count = crime_counts[name] || 0;
         
-        // Always remove the old marker if it exists
+        //remove the old marker if it exists
         if(map.neighborhood_markers[i].marker) {
             map.leaflet.removeLayer(map.neighborhood_markers[i].marker);
-            map.neighborhood_markers[i].marker = null; // Clear the reference
+            map.neighborhood_markers[i].marker = null;
         }
 
-        // Only add a marker if we have a location (safety check)
+        // add a marker if we have a location
         if (map.neighborhood_markers[i].location) {
              map.neighborhood_markers[i].marker = L.marker(map.neighborhood_markers[i].location, { 
                 title: name  + '\nCrimes: ' + crime_count
@@ -259,9 +259,57 @@ function updateMarkerTitles() {
             
             map.neighborhood_markers[i].marker.bindPopup(`<b>${name}</b><br>Crimes: ${crime_count}`);
         }
-    }
+        
 }
 
+//Creates a marker on the map for an incident
+function createIncidentMarker(incident) {
+    let lat, lon;
+    let block = incident.block;
+    let numbers_in_address = block.substring(0, block.indexOf(' '));
+    numbers_in_address = numbers_in_address.replaceAll('X', '0');
+    block = block.replace(block.substring(0, block.indexOf(' ')), numbers_in_address);
+    console.log(block);
+
+    fetch('https://nominatim.openstreetmap.org/search?q=' + block + ' St. Paul MN&format=jsonv2')
+    .then((response) => {
+        return response.json();
+    })
+    .then((data) => {
+        console.log(data);
+        lat = data[0].lat;
+        lon = data[0].lon;
+
+        console.log(`${lat} ${lon}`);
+
+    // use a colored circle marker (color from incident.color if available)
+    const marker = L.circleMarker([Number(lat), Number(lon)], {
+        radius: 6,
+        fillColor: incident.color || 'red',
+        color: '#000',
+        weight: 1,
+        fillOpacity: 0.9,
+        title: incident.incident
+    }).addTo(map.leaflet);
+
+    // popup with useful info
+    marker.bindPopup(`<b>Date: ${incident.date}</b><br>
+    <b>Time: ${incident.time}</b><br>
+    <b>Incident: ${incident.incident}`).openPopup();
+
+    // optionally keep reference so you can remove/update later
+    incident._marker = marker
+
+        })
+    .catch((err) => {
+        console.log(err);
+    });
+}
+
+//removes incident marker
+function removeIncidentMarker(incident){
+    incident._marker.remove();
+}
 
 // Function called when user presses 'OK' on dialog box
 function closeDialog() {
@@ -355,6 +403,8 @@ function closeDialog() {
                     <td>{{ incident.police_grid }}</td>
                     <td>{{ incident.neighborhood }}</td>
                     <td>{{ incident.block }}</td>
+                    <td><button @click="createIncidentMarker(incident)">Create marker</button></td>
+                    <td><button @click="removeIncidentMarker(incident)">Delete Marker</button></td>
                 </tr>
             </tbody>
         </table>
