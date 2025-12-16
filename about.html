@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>St. Paul Crime Map</title>
+    <!-- Foundation CSS -->
+    <link rel="stylesheet" href="css/foundation.css">
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="css/style.css"/>
+    <!-- Vue App -->
+    <script type="module" src="src/main.js"></script>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <ul class="dropdown menu" data-dropdown-menu>
+            <li class="menu-text">St. Paul Crime Map</li>
+            <li><a href="./index.html">Map</a></li>
+            <li><a href="./about.html">About</a></li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="grid-x">
+        <div class="cell medium-4">
+            <div class="card" style="margin: 20px">
+                <img src="./img/MarkDeSutter-Small.jpg">
+                <div class="card-section">
+                    <h4>Mark DeSutter</h4>
+                    <p>Hello, I'm Mark DeSutter. I am currently a junior at the University of St Thomas studying computer science I started coding in junior year of high school and have loved it ever since</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cell medium-4">
+            <div class="card" style="margin: 20px">
+                <img src="Image">
+                <div class="card-section">
+                    <h4>Name</h4>
+                    <p>Bio</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cell medium-4">
+            <div class="card" style="margin: 20px">
+                <img src="Image">
+                <div class="card-section">
+                    <h4>Name</h4>
+                    <p>Bio</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-x">
+        <h4 class="column small-12 text-center">Tour of This Site</h4>
+        <!--Video Goes here-->
+    </div>
+
+    <div class="grid-x">
+        <h4 class="column small-12 text-center">Interesting Finds</h4>
+        <p class="column small-12 text-center">In the Macalester-Groveland Neighborhood, it seems that the majority of crimes are thefts</p>
+        <p class="column small-12 text-center">Most of the reports in Capitol River seems to be proactive police visits</p>
+        <p class="column small-12 text-center">Find</p>
+        <p class="column small-12 text-center">Find</p>
+        <p class="column small-12 text-center">Find</p>
+        <p class="column small-12 text-center">Find</p>
+    </div>
+
+    
+    <!-- Foundation CSS Framework: include before closing <body> tag -->
+    <script src="js/vendor/jquery.js"></script>
+    <script src="js/vendor/what-input.js"></script>
+    <script src="js/vendor/foundation.js"></script>
+    <script type="application/javascript">
+        $(document).foundation();
+    </script>
+</body>
+</html>
