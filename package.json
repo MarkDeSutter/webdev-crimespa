@@ -7,8 +7,11 @@
         "email": "desu5994@stthomas.edu"
     },
     "contributors": [
+        "Mark DeSutter",
+        "Jair Garces Vargas",
+        "Ibrahima Ka"
     ],
-    "repository": {},
+    "repository": {"url": "https://github.com/MarkDeSutter/webdev-crimespa"},
     "type": "module",
     "engines": {
         "node": "^20.19.0 || >=22.12.0"
